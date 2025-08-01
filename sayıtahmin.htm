@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sayı Tahmin Oyunu</title>
+    <style>
+         :root {
+            --bg: #fff;
+            --text: #000;
+            --accent: #0077ff;
+        }
+        
+        body.dark {
+            --bg: #121212;
+            --text: #f1f1f1;
+            --accent: #66ccff;
+        }
+        
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .container {
+            max-width: 500px;
+            width: 90%;
+            margin-top: 30px;
+            padding: 20px;
+            border: 2px solid var(--accent);
+            border-radius: 10px;
+            background-color: var(--bg);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        select,
+        input[type="number"],
+        button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 1rem;
+            border: 1px solid var(--accent);
+            border-radius: 5px;
+            background-color: var(--bg);
+            color: var(--text);
+        }
+        
+        button {
+            cursor: pointer;
+            background-color: var(--accent);
+            color: #fff;
+            border: none;
+        }
+        
+        button:hover {
+            background-color: #005bb5;
+        }
+        
+        .settings {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .game-area {
+            margin-top: 20px;
+        }
+        
+        #hiddenInputLabel {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        #darkModeToggle {
+            width: auto;
+            padding: 10px 15px;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🎯 Sayı Tahmin Oyunu</h1>
+        <div class="settings">
+            <label for="difficulty">Zorluk Seviyesi:</label>
+            <select id="difficulty" aria-label="Zorluk Seviyesi">
+        <option value="10">🐣 Çok Kolay (1-10)</option>
+        <option value="50">😊 Kolay (1-50)</option>
+        <option value="100" selected>😈 Orta (1-100)</option>
+        <option value="200">🧠 Zor (1-200)</option>
+      </select>
+            <button id="darkModeToggle" aria-pressed="false">🌙 Karanlık Mod</button>
+            <label id="hiddenInputLabel">
+        <input type="checkbox" id="hiddenInput" />
+        Gizli Mod
+      </label>
+        </div>
+        <div class="game-area" role="main" aria-live="polite">
+            <p id="message">Bir sayı tuttum, tahmin et!</p>
+            <input type="number" id="guessInput" placeholder="Tahmininizi girin" aria-label="Tahmin giriniz" />
+            <button id="guessBtn">Tahmin Et</button>
+            <p id="timer">⏳ Süre: 30</p>
+            <p id="score">🔢 Skor: 0</p>
+            <p id="highScore">🏆 En Yüksek Skor: 0</p>
+            <p id="previousGuesses">📜 Önceki Tahminler:</p>
+            <button id="restartBtn">🔁 Yeni Oyun</button>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            const guessInput = document.getElementById('guessInput');
+            const guessBtn = document.getElementById('guessBtn');
+            const message = document.getElementById('message');
+            const scoreDisplay = document.getElementById('score');
+            const highScoreDisplay = document.getElementById('highScore');
+            const previousGuesses = document.getElementById('previousGuesses');
+            const restartBtn = document.getElementById('restartBtn');
+            const difficultySelect = document.getElementById('difficulty');
+            const darkToggle = document.getElementById('darkModeToggle');
+            const hiddenInputCheckbox = document.getElementById('hiddenInput');
+            const timerDisplay = document.getElementById('timer');
+
+            let target, score, guesses, max, timer, countdown;
+            let highScore = localStorage.getItem('highScore') ? Number(localStorage.getItem('highScore')) : 0;
+
+            function initGame() {
+                const diff = Number(difficultySelect.value);
+                max = diff;
+                target = Math.floor(Math.random() * max) + 1;
+                score = 0;
+                guesses = [];
+                scoreDisplay.textContent = `🔢 Skor: ${score}`;
+                highScoreDisplay.textContent = `🏆 En Yüksek Skor: ${highScore}`;
+                previousGuesses.textContent = `📜 Önceki Tahminler:`;
+                message.textContent = `1 ile ${max} arasında bir sayı tuttum!`;
+                guessInput.disabled = false;
+                guessInput.min = 1;
+                guessInput.max = max;
+                guessBtn.disabled = false;
+                guessInput.value = '';
+                startTimer();
+            }
+
+            function startTimer() {
+                clearInterval(countdown);
+                timer = 30;
+                timerDisplay.textContent = `⏳ Süre: ${timer}`;
+                countdown = setInterval(() => {
+                    timer--;
+                    timerDisplay.textContent = `⏳ Süre: ${timer}`;
+                    if (timer <= 0) {
+                        clearInterval(countdown);
+                        message.textContent = `⏰ Süre doldu! Sayı ${target} idi.`;
+                        guessInput.disabled = true;
+                        guessBtn.disabled = true;
+                    }
+                }, 1000);
+            }
+
+            guessBtn.addEventListener('click', () => {
+                const guess = Number(guessInput.value);
+                if (!guess || guess < 1 || guess > max) {
+                    message.textContent = `⚠️ Lütfen 1 ile ${max} arasında geçerli bir sayı girin.`;
+                    return;
+                }
+                if (timer <= 0) return;
+
+                guesses.push(guess);
+                previousGuesses.textContent = `📜 Önceki Tahminler: ${guesses.join(', ')}`;
+                score++;
+                scoreDisplay.textContent = `🔢 Skor: ${score}`;
+
+                if (guess === target) {
+                    message.textContent = `🎉 Doğru Tahmin! Sayı: ${target}`;
+                    clearInterval(countdown);
+                    guessInput.disabled = true;
+                    guessBtn.disabled = true;
+                    if (score > highScore) {
+                        highScore = score;
+                        localStorage.setItem('highScore', highScore);
+                        highScoreDisplay.textContent = `🏆 En Yüksek Skor: ${highScore}`;
+                    }
+                } else {
+                    message.textContent = guess < target ? '📈 Daha büyük bir sayı dene.' : '📉 Daha küçük bir sayı dene.';
+                }
+                guessInput.value = '';
+                guessInput.focus();
+            });
+
+            restartBtn.addEventListener('click', initGame);
+
+            difficultySelect.addEventListener('change', initGame);
+
+            darkToggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark');
+                if (document.body.classList.contains('dark')) {
+                    darkToggle.textContent = '☀️ Aydınlık Mod';
+                    darkToggle.setAttribute('aria-pressed', 'true');
+                } else {
+                    darkToggle.textContent = '🌙 Karanlık Mod';
+                    darkToggle.setAttribute('aria-pressed', 'false');
+                }
+            });
+
+            hiddenInputCheckbox.addEventListener('change', () => {
+                guessInput.type = hiddenInputCheckbox.checked ? 'password' : 'number';
+            });
+
+            window.addEventListener('load', () => {
+                initGame();
+                // Karanlık mod tercihini localStorage'dan yükle (opsiyonel)
+                if (localStorage.getItem('darkMode') === 'enabled') {
+                    document.body.classList.add('dark');
+                    darkToggle.textContent = '☀️ Aydınlık Mod';
+                    darkToggle.setAttribute('aria-pressed', 'true');
+                }
+            });
+
+            // Karanlık mod tercihini sakla
+            darkToggle.addEventListener('click', () => {
+                if (document.body.classList.contains('dark')) {
+                    localStorage.setItem('darkMode', 'enabled');
+                } else {
+                    localStorage.setItem('darkMode', 'disabled');
+                }
+            });
+        })();
+    </script>
+</body>
+
+</html>
